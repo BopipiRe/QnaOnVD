@@ -1,5 +1,6 @@
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
+from pathlib import Path
 import doc_service as dcs
 
 embeddings = OllamaEmbeddings(
@@ -8,19 +9,23 @@ embeddings = OllamaEmbeddings(
 )
 
 # 保存
-def save_vector_store(textChunks):
+def save_vector_store(textChunks, path):
+    file_name = path.split('\\')[-1].split('.', 1)[0]
+    if Path('faiss\\' + file_name + '-faiss').exists():
+        print('Skipping ' + file_name + '-faiss')
+        return
     db = FAISS.from_texts(textChunks, embeddings)
-    # HuggingFaceEmbeddings(model_name="shibing624/text2vec-base-chinese")
-    db.save_local('faiss')
+    db.save_local('faiss\\' + file_name + '-faiss')
 
 
 # 加载
-def load_vector_store():
-    return FAISS.load_local('faiss', embeddings, allow_dangerous_deserialization=True)
+def load_vector_store(path):
+    file_name = path.split('\\')[-1].split('.', 1)[0]
+    return FAISS.load_local('faiss\\' + file_name + '-faiss', embeddings, allow_dangerous_deserialization=True)
 
 
 # 将pdf切分块，嵌入和向量存储
 def generate_vector_store(path):
     raw_text = dcs.get_pdf_text(path)
     text_chunks = dcs.get_text_chunks(raw_text)
-    save_vector_store(text_chunks)
+    save_vector_store(text_chunks, path)

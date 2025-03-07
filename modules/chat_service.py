@@ -5,10 +5,10 @@ from langchain.chains import RetrievalQA
 # 获取检索型问答链
 def get_qa_chain(vector_store):
     prompt_template = """### 规则
-                        1. 仅使用以下上下文回答问题
-                        2. 若答案不在上下文中，必须返回："根据已知信息无法回答"
+                        1. 仅使用以下知识库回答问题
+                        2. 若答案不在知识库中，必须回答："根据已知信息无法回答"，不能回答别的
 
-                        上下文
+                        知识库
                         {context}
 
                         问题
@@ -20,13 +20,14 @@ def get_qa_chain(vector_store):
                             input_variables=["context", "question"])
     try:
         # 初始化 Ollama 模型
-        llm = Ollama(model="qwen2.5:0.5b")  # 确保本地已下载该模型 (ollama pull qwen2.5:1.5b)
+        llm = Ollama(model="qwen2.5:1.5b")  # 确保本地已下载该模型 (ollama pull qwen2.5:1.5b)
     except Exception as e:
         raise RuntimeError(f"Ollama 模型初始化失败: {str(e)}")
 
     return RetrievalQA.from_llm(
         llm=llm,
-        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),  # 返回前3个相关文档块
+        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
+        # 返回前3个相关文档块
         # chain_type="map_reduce",  # 处理长文本
         return_source_documents=True,  # 返回来源文档（调试用）
         prompt=prompt
