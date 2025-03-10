@@ -1,23 +1,38 @@
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
+from docx import Document as Docx
 
 # 获取带有元数据的pdf文件内容
 def get_pdf_text_with_metadata(pdf_path):
-    documents = []
     pdf_reader = PdfReader(pdf_path)
-    for page_num, page in enumerate(pdf_reader.pages):
-        text = page.extract_text()
-        documents.append(
-            Document(
-                page_content=text,
-                metadata={
-                    "source": pdf_path,
-                    "page": page_num + 1  # 页码从1开始
-                }
-            )
+    documents = [
+        Document(
+            page_content=page.extract_text(),
+            metadata={
+                "source": pdf_path,
+                "page": i+1
+            }
         )
+        for i, page in enumerate(pdf_reader.pages)
+    ]
     return documents
+
+
+def get_docx_text_with_metadata(docx_path):
+    doc = Docx(docx_path)
+    documents = [
+        Document(
+            page_content=para.text,
+            metadata={
+                "source": docx_path,
+                "paragraphs": i+1
+            }
+        )
+        for i, para in enumerate(doc.paragraphs)
+    ]
+    return documents
+
 
 # 拆分带有元数据的文档
 def split_documents_with_metadata(documents):

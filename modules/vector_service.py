@@ -2,6 +2,7 @@ from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.vectorstores import FAISS
 from pathlib import Path
 import doc_service as dcs
+
 # from langchain_core.documents import Document
 # from langchain_community.document_loaders import DirectoryLoader
 #
@@ -33,9 +34,6 @@ def save_vector_store(textChunks, path):
 # 保存
 def save_vector_store_with_metadata(chunks, path):
     file_name = path.split('\\')[-1].split('.', 1)[0]
-    if Path('faiss\\' + file_name + '-faiss').exists():
-        print('Skipping ' + file_name + '-faiss')
-        return
     db = FAISS.from_documents(chunks, embeddings)
     db.save_local('faiss\\' + file_name + '-faiss')
 
@@ -48,9 +46,15 @@ def load_vector_store(path):
 
 # 将pdf切分块，嵌入和向量存储
 def generate_vector_store(path):
-    # raw_text = dcs.get_pdf_text(path)
-    # text_chunks = dcs.get_text_chunks(raw_text)
-    # save_vector_store(text_chunks, path)
-    documents = dcs.get_pdf_text_with_metadata(path)
+    file_name = path.split('\\')[-1].split('.', 1)[0]
+    if Path('faiss\\' + file_name + '-faiss').exists():
+        print('Skipping ' + file_name + '-faiss')
+        return
+    doc_format = path.split('.')[-1]
+    documents = []
+    if doc_format == 'pdf':
+        documents = dcs.get_pdf_text_with_metadata(path)
+    elif doc_format == 'docx':
+        documents = dcs.get_docx_text_with_metadata(path)
     chunks = dcs.split_documents_with_metadata(documents)
     save_vector_store_with_metadata(chunks, path)
