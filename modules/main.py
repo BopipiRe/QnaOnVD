@@ -16,4 +16,4 @@ if __name__ == '__main__':
         result = chain.invoke({"query": question})  # 注意输入键应为 "query"
 
         print(result['result'])
-        # print("来源文档:", result["source_documents"])  # 如果设置了 return_source_documents=True
+        print("来源文档:", result["source_documents"][0].metadata)  # 如果设置了 return_source_documents=True
