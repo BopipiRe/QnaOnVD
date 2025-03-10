@@ -38,7 +38,7 @@ def get_docx_text_with_metadata(docx_path):
 def split_documents_with_metadata(documents):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
-        chunk_overlap=200,
+        chunk_overlap=300,
         separators=["\n## ", "\n\n", "\n", "。", "！"]
     )
     chunks = text_splitter.split_documents(documents)  # 关键：使用 split_documents 而非 split_text

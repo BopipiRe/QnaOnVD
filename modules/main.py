@@ -1,10 +1,16 @@
-from vector_service import load_vector_store,generate_vector_store
+from vector_service import generate_vector_store,vector_store,delete_vector_store
 import chat_service as chs
 
 if __name__ == '__main__':
-    path = 'doc\\xs.pdf'
+    path = 'doc\\cw.pdf'
     generate_vector_store(path)
-    vector_store = load_vector_store(path)
+    # results = vector_store.similarity_search(
+    #     "项目名称是什么",
+    #     k=2,
+    # )
+    # for res in results:
+    #     print(f"* {res.page_content} [{res.metadata}]")
+
     chain = chs.get_qa_chain(vector_store)
 
     while True:
