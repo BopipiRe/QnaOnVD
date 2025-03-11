@@ -9,16 +9,16 @@ embeddings = OllamaEmbeddings(
 )
 
 vector_store = Chroma(
-    collection_name="example",
+    collection_name="test",
     embedding_function=embeddings,
-    persist_directory="./chroma_db"
+    persist_directory="../chroma_db"
 )
 
 
 # 将pdf切分块，嵌入和向量存储
 def generate_vector_store(path):
     # TODO:增量更新
-    delete_vector_store(path)
+    # delete_vector_store(path)
     # if vector_store.get(where={"source":path}):
     #     print("Already exists")
     #     return
@@ -30,6 +30,7 @@ def generate_vector_store(path):
         documents = dcs.get_docx_text_with_metadata(path)
     chunks = dcs.split_documents_with_metadata(documents)
     vector_store.add_documents(chunks)
+
 
 def delete_vector_store(path):
     vector_store.delete(where={"source":path})

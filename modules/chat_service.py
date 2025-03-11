@@ -29,11 +29,7 @@ def get_qa_chain(vector_store):
                             
                             # 当前问题
                             {question}
-                            
-                            # 响应格式
-                            <答案>
-                            [在此填写结构化回答]
-                            </答案>"""
+                            """
 
     prompt = PromptTemplate(template=prompt_template_new,
                             input_variables=["context", "question"])
@@ -43,8 +39,8 @@ def get_qa_chain(vector_store):
 
     return RetrievalQA.from_llm(
         llm=llm,
-        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
-        chain_type="map_reduce",  # 处理长文本
+        retriever=vector_store.as_retriever(search_type="mmr", search_kwargs={"k": 5,"fetch_k": 50}),
+        # chain_type="map_reduce",  # 处理长文本
         return_source_documents=True,  # 返回来源文档（调试用）
         prompt=prompt
     )
