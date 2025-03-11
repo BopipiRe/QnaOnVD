@@ -1,6 +1,8 @@
 from langchain_community.llms import Ollama
 from langchain.prompts import PromptTemplate
 from langchain.chains import RetrievalQA
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.chains.llm import LLMChain
 
 # 获取检索型问答链
 def get_qa_chain(vector_store):
@@ -35,13 +37,14 @@ def get_qa_chain(vector_store):
                             input_variables=["context", "question"])
 
     # 初始化 Ollama 模型
-    llm = Ollama(model="qwen2.5:0.5b")  # 确保本地已下载该模型 (ollama pull qwen2.5:1.5b)
+    llm = Ollama(model="qwen2.5:1.5b")  # 确保本地已下载该模型 (ollama pull qwen2.5:1.5b)
 
-    return RetrievalQA.from_llm(
+    return RetrievalQA.from_chain_type(
         llm=llm,
-        retriever=vector_store.as_retriever(search_type="mmr", search_kwargs={"k": 5,"fetch_k": 50}),
-        # chain_type="map_reduce",  # 处理长文本
+        retriever=vector_store.as_retriever(),
+        # chain_type="map_reduce",  # 处理长文本 map_reduce
+        # combine_document_chain=combine_documents_chain,  # 关键优化点
         return_source_documents=True,  # 返回来源文档（调试用）
-        prompt=prompt
+        # prompt=prompt
     )
 

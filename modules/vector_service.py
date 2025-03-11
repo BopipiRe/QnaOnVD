@@ -11,7 +11,8 @@ embeddings = OllamaEmbeddings(
 vector_store = Chroma(
     collection_name="test",
     embedding_function=embeddings,
-    persist_directory="../chroma_db"
+    persist_directory="../chroma_db",
+    collection_metadata={"hnsw:space": "cosine"}  # 余弦相似度计算
 )
 
 
