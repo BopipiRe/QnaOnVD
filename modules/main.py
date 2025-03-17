@@ -1,9 +1,9 @@
-from vector_service import vector_store
-import chat_service as chs
+from modules.service import VectorService, ChatService
 
 if __name__ == '__main__':
 
-    chain = chs.get_qa_chain(vector_store)
+    vector_store = VectorService().vector_store
+    chain = ChatService().get_qa_chain(vector_store)
 
     while True:
         question = input("\n用户提问（输入q退出）: ")

@@ -1,10 +1,10 @@
-import pandas as pd
 import matplotlib.pyplot as plt  # 新增必要库
+import pandas as pd
 
-from vector_service import vector_store  # 根据实际导入方式调整
+from modules.service import VectorService
 
 # 连接数据库（示例使用本地客户端）
-collection = vector_store._collection
+collection = VectorService().vector_store._collection
 
 # 获取元数据并转为DataFrame
 data = collection.get()
