@@ -1,9 +1,8 @@
 from langchain.chains import RetrievalQA, LLMChain
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain
-from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 
-from modules import langchain_llm
+from settings import langchain_llm
 
 
 class ChatService:
@@ -65,7 +64,7 @@ class ChatService:
 
                 # 如果没有检索到相关文档，直接返回预设提示
                 if not docs:
-                    return {"result": "根据提供资料无法回答", "source_documents": []}
+                    return {"result": "根据提供资料无法回答"} # , "source_documents": docs}
 
                 # 调用父类的 _call 方法生成答案(多一次数据库查询操作)
                 # return super()._call(inputs)
@@ -80,11 +79,11 @@ class ChatService:
                 result = self.combine_documents_chain.invoke(inputs_for_combine)
 
                 # 返回结果
-                return {"result": result["output_text"], "source_documents": docs}
+                return {"result": result["output_text"]} # , "source_documents": docs}
 
         # 返回自定义 RetrievalQA
         return CustomRetrievalQA(
             combine_documents_chain=combine_documents_chain,
             retriever=retriever,
-            return_source_documents=True
+            # return_source_documents=True
         )

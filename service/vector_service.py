@@ -9,11 +9,11 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2t
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 
-from modules import resource_path, embed_model, chunk_size, chunk_overlap, langchain_llm
+from settings import embed_model, chunk_size, chunk_overlap, langchain_llm, default_db
 
 
 class VectorService:
-    def __init__(self, collection_name="detail", persist_directory=resource_path("chroma_db")):
+    def __init__(self, persist_directory, collection_name=default_db):
         """
         初始化向量存储管理器。
 
@@ -53,7 +53,7 @@ class VectorService:
         documents = text_splitter.split_documents(document)
         return documents
 
-    def file_detail_index(self, file):
+    def file_index(self, file):
         """
         将指定路径的文档（PDF 或 DOCX）嵌入并存储到向量数据库中。
         :param file: 文档路径
@@ -63,6 +63,16 @@ class VectorService:
         except Exception as e:
             logging.error(f"文档 {file} 添加到向量存储时出错：{e}")
         logging.info(f"文档 {file} 已成功添加到向量存储中。")
+
+    @deprecated(version='1.0', reason="This function will be removed soon")
+    def text_index(self, text, source):
+        """
+        将文本数据嵌入并存储到向量数据库中，source作为标识
+        :param text: 文本
+        :param source: 来源，标识
+        """
+        text_with_source = Document(page_content=text, metadata={'source': source})
+        self.db.add_documents([text_with_source])
 
     @deprecated(version='1.0', reason="This function will be removed soon")
     def file_summary_index_by_refine(self, file):
@@ -215,9 +225,9 @@ class VectorService:
 if __name__ == "__main__":
     detail_service = VectorService("detail")
     queries = ["销售管理平台的要求",
-    "吴催波的教育经历",
-    "财务协同平台的要求",
-    "量子计算的优势是什么"]
+        "吴催波的教育经历",
+        "财务协同平台的要求",
+        "量子计算的优势是什么"]
     for query in queries:
         results = detail_service.db.similarity_search_with_score(query)
         for i, (doc, score) in enumerate(results):
