@@ -1,6 +1,7 @@
 import logging
 import os.path
 
+import chromadb
 from deprecated import deprecated
 from langchain.chains.summarize import load_summarize_chain
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -9,11 +10,11 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2t
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 
-from settings import embed_model, chunk_size, chunk_overlap, langchain_llm, default_db
+from settings import embed_model, chunk_size, chunk_overlap, langchain_llm, default_db, resource_path, chroma_db
 
 
 class VectorService:
-    def __init__(self, persist_directory, collection_name=default_db):
+    def __init__(self, persist_directory=resource_path(chroma_db), collection_name=default_db):
         """
         初始化向量存储管理器。
 
@@ -59,10 +60,12 @@ class VectorService:
         :param file: 文档路径
         """
         try:
+            if file in self.get_documents():
+                return "文件已存在"
             self.db.add_documents(self._file_chunks(file))
+            return "文件索引成功"
         except Exception as e:
-            logging.error(f"文档 {file} 添加到向量存储时出错：{e}")
-        logging.info(f"文档 {file} 已成功添加到向量存储中。")
+            return f"文件索引失败: {e}"
 
     @deprecated(version='1.0', reason="This function will be removed soon")
     def text_index(self, text, source):
@@ -220,6 +223,41 @@ class VectorService:
         """
         existing_docs = self.db.get(where={"source": file})
         return len(existing_docs["ids"]) > 0
+
+    def get_documents(self):
+        documents = self.db.get()
+        metadatas = documents["metadatas"]
+        documents_source = [metadata["source"] for metadata in metadatas]
+        documents_source = list(set(documents_source))
+        return documents_source
+
+    def delete_documents(self, documents_source):
+        result = []
+        for document_source in documents_source:
+            source_format = os.path.normpath(document_source)
+            try:
+                if source_format not in self.get_documents():
+                    result.append(f"{source_format}不存在于向量存储中，无法删除")
+                    continue
+                self.db.delete(where={"source": source_format})
+                result.append(f"{source_format}删除成功")
+            except Exception as e:
+                result.append(f"{source_format}删除失败，错误信息：{e}")
+        return result
+
+
+class ChromaService:
+    # 初始化 Chroma 客户端
+    client = chromadb.PersistentClient(path=resource_path(chroma_db))  # 指定持久化目录
+
+    @classmethod
+    def get_collections(cls):
+        collections = cls.client.list_collections()
+        return collections
+
+    @classmethod
+    def delete_collection(cls, collection_name):
+        cls.client.delete_collection(collection_name)
 
 
 if __name__ == "__main__":

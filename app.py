@@ -3,10 +3,10 @@ import asyncio
 from flask import Flask
 from flask import request
 
-from settings import resource_path, chroma_db
 from blueprint import tool_bp, chroma_bp
 from service import ChatService, VectorService
 from service.tool_service import ToolService
+from settings import resource_path, chroma_db
 
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
 app = Flask(__name__)
@@ -36,6 +36,14 @@ def chat():
         return result['result']
     except Exception as e:
         return {"error": str(e)}, 500
+
+@app.route("/test")
+def test():
+    """测试API"""
+    kwarg = request.args
+    input1 = kwarg.get('input1')
+    input2 = kwarg.get('input2')
+    return {"output1": input1, "output2": input2}
 
 app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)

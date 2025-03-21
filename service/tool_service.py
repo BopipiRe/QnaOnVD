@@ -111,13 +111,14 @@ class ToolService:
 
     @classmethod
     def register_tool(cls, tool_config: dict):
-        """注册工具"""
+        """注册/更新工具"""
         # 参数校验逻辑
         if not cls._validate_json(tool_config):
             return False
 
         name = tool_config["name"]
         cls.tools[name] = tool_config
+        # TODO 持久化
         return True
 
     @classmethod
@@ -143,6 +144,17 @@ class ToolService:
                 return "请提供参数，模式：\n"+str(tool_config['input_schema'])
         else:
             return None
+
+    @classmethod
+    def find_tool(cls, type):
+        if type not in ['SQL', 'API']:
+            return {'error': '不支持的工具类型'}
+        return [tool for tool in cls.tools.values() if tool['type'] == type]
+
+    @classmethod
+    def delete_tool(cls, name):
+        # TODO 删除工具
+        pass
 
 
 if __name__ == '__main__':
