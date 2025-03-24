@@ -1,5 +1,6 @@
 import asyncio
 
+from flasgger import Swagger
 from flask import Flask
 from flask import request
 
@@ -48,5 +49,6 @@ def test():
 app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)
 
-app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
 
