@@ -161,18 +161,22 @@ if __name__ == '__main__':
     # 测试 GET 请求
     # 符合格式的 JSON 数据
     valid_data = {
-        "name": "chat",
+        "name": "test",
         "type": "API",
-        "url": "http://127.0.0.1:5000/chat",
+        "url": "http://127.0.0.1:5000/test",
         "method": "GET",
-        "description": "AI对话",
+        "description": "ces",
         "input_schema": {
-            "query": {
+            "input1": {
+                "type": "string"
+            },
+            "input2": {
                 "type": "string"
             }
-        }
+        },
+        "response_format": "first input:{output1},second input:{output2}"
     }
 
     ToolService.register_tool(valid_data)
-    result = asyncio.run(ToolService.tool_invoke('chat:吴催波的教育经历'))
-    print(type(result))
+    result = asyncio.run(ToolService.tool_invoke('test:1,2'))
+    print(result)

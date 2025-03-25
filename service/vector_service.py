@@ -205,15 +205,6 @@ class VectorService:
             logging.error(f"文档的摘要 {file} 添加到向量存储时出错：{e}")
         logging.info(f"文档的摘要 {file} 添加到向量存储时成功。")
 
-    def delete_document(self, file):
-        """
-        从向量存储中删除指定路径的文档。
-
-        :param file: 文档路径
-        """
-        self.db.delete(where={"source": file})
-        logging.info(f"文档 {file} 已从向量存储中删除。")
-
     def check_document_exists(self, file):
         """
         检查指定路径的文档是否已存在于向量存储中。
@@ -263,13 +254,13 @@ class ChromaService:
 if __name__ == "__main__":
     detail_service = VectorService("detail")
     queries = ["销售管理平台的要求",
-        "吴催波的教育经历",
-        "财务协同平台的要求",
-        "量子计算的优势是什么"]
+               "吴催波的教育经历",
+               "财务协同平台的要求",
+               "量子计算的优势是什么"]
     for query in queries:
         results = detail_service.db.similarity_search_with_score(query)
         for i, (doc, score) in enumerate(results):
-            print(f"\n===== 第 {i+1} 个文档块（分数: {score:.3f}） =====")
+            print(f"\n===== 第 {i + 1} 个文档块（分数: {score:.3f}） =====")
             print("内容:", doc.page_content)  # 文本内容
-            print("元数据:", doc.metadata["source"])    # 来源文件、页码等附加信息
+            print("元数据:", doc.metadata["source"])  # 来源文件、页码等附加信息
             source = doc.metadata["source"]

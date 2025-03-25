@@ -1,16 +1,16 @@
 import asyncio
 
-from flasgger import Swagger
+from flasgger import Swagger, swag_from
 from flask import Flask
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
-from service import ChatService, VectorService
-from service.tool_service import ToolService
+from service import ChatService, VectorService, ToolService
 from settings import resource_path, chroma_db
 
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
 app = Flask(__name__)
+Swagger(app)
 
 #程序实例需要知道每个url请求所对应的运行代码是谁。
 #所以程序中必须要创建一个url请求地址到python运行函数的一个映射。
@@ -18,7 +18,50 @@ app = Flask(__name__)
 #url映射的函数，要传参则在上述route（路由）中添加参数申明
 @app.route("/chat")
 def chat():
-    """聊天APPI"""
+    """
+    综合查询接口 - 支持工具调用与向量检索
+    ---
+    tags:
+    - chat
+    parameters:
+      - name: query
+        in: query
+        type: string
+        required: true
+        description: 查询内容（支持自然语言指令或工具调用指令）
+        example: "查询工具"
+    responses:
+      200:
+        description: 成功响应（根据查询类型返回不同结构）
+        schema:
+          oneOf:
+            - type: array
+              items:
+                type: string
+              example: ["tool1", "tool2"]
+            - type: object
+              properties:
+                result:
+                  type: string
+                  description: 格式化后的查询结果
+                  example: "以下是可用工具列表..."
+      400:
+        description: 参数错误
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "缺少查询参数 'query'"
+      500:
+        description: 服务端错误
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+              example: "数据库连接失败"
+    """
     # 从查询参数中获取 query
     query = request.args.get("query")
     if not query:
@@ -40,7 +83,31 @@ def chat():
 
 @app.route("/test")
 def test():
-    """测试API"""
+    """
+    测试API
+    ---
+    tags:
+    - chat
+    parameters:
+      - name: input1
+        in: query
+        type: string
+        required: true
+      - name: input2
+        in: query
+        type: string
+        required: true
+    responses:
+      200:
+        description: 成功响应（根据查询类型返回不同结构）
+        schema:
+          type: object
+          properties:
+            output1:
+              type: string
+            output2:
+              type: string
+    """
     kwarg = request.args
     input1 = kwarg.get('input1')
     input2 = kwarg.get('input2')
