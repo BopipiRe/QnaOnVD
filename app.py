@@ -6,7 +6,7 @@ from flask import request
 
 from blueprint import tool_bp, chroma_bp
 from service import ChatService, VectorService, ToolService
-from settings import resource_path, chroma_db
+from settings import chroma_db
 
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
 app = Flask(__name__)
@@ -74,7 +74,7 @@ def chat():
         tool_res = asyncio.run(ToolService.tool_invoke(query))
         if tool_res:
             return tool_res
-        db = VectorService(persist_directory=resource_path(chroma_db)).db
+        db = VectorService(persist_directory=chroma_db).db
         doc_chain = ChatService().get_qa_chain(db)
         result = doc_chain.invoke({"query": query})
         return result['result']
@@ -117,5 +117,5 @@ app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) # 多进程 生产：gunicorn -w 4 myapp:app 开发：app.run(processes=N)
 

@@ -136,10 +136,11 @@ def delete_tool_api():
     name = request.args.get('name')
     if not name:
         return jsonify({"error": "缺少查询参数 'name'"}), 400
-    if ToolService.delete_tool(name):
+    try:
+        ToolService.delete_tool(name)
         return jsonify({"message": "工具删除成功"}), 200
-    else:
-        return jsonify({"error": "工具删除失败，工具不存在"}), 400
+    except Exception as e:
+        return jsonify({"error": f"工具删除失败{str(e)}"}), 400
 
 @tool_bp.route('', methods=['GET'])
 @swag_from({
@@ -150,8 +151,9 @@ def delete_tool_api():
         {
             'name': 'type',
             'in': 'query',
-            'required': True,
-            'type': 'string'
+            'required': False,
+            'type': 'string',
+            'description': '为空时查询所有工具'
         }
     ],
     'responses': {
@@ -161,21 +163,10 @@ def delete_tool_api():
                 'type': 'array',
                 'items': schema
             }
-        },
-        400: {
-            'description': '查找失败',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'error': {'type': 'string'}
-                }
-            }
         }
     }
 })
 def find_tool_api():
     type = request.args.get('type')
-    if not type:
-        return jsonify({"error": "缺少查询参数 'type'"}), 400
     tools = ToolService.find_tool(type)
     return jsonify(tools) if tools else jsonify({"message": "未找到符合条件的工具"}), 200

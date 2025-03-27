@@ -10,11 +10,11 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2t
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 
-from settings import embed_model, chunk_size, chunk_overlap, langchain_llm, default_db, resource_path, chroma_db
+from settings import embed_model, chunk_size, chunk_overlap, langchain_llm, default_db, chroma_db
 
 
 class VectorService:
-    def __init__(self, persist_directory=resource_path(chroma_db), collection_name=default_db):
+    def __init__(self, persist_directory=chroma_db, collection_name=default_db):
         """
         初始化向量存储管理器。
 
@@ -239,7 +239,7 @@ class VectorService:
 
 class ChromaService:
     # 初始化 Chroma 客户端
-    client = chromadb.PersistentClient(path=resource_path(chroma_db))  # 指定持久化目录
+    client = chromadb.PersistentClient(path=chroma_db)  # 指定持久化目录
 
     @classmethod
     def get_collections(cls):

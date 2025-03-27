@@ -1,12 +1,14 @@
 import asyncio
+import json
 import logging
+import os.path
 import re
 
 import httpx
 import jsonschema
 from jsonschema import validate
 
-from settings import schema
+from settings import schema, tool_json
 
 
 class ToolService:
@@ -36,13 +38,22 @@ class ToolService:
         """调用工具API"""
         async with httpx.AsyncClient() as client:
             try:
-                resp = await client.request(
-                    method=method,
-                    url=url,
-                    json=params if method == "POST" else None,
-                    params=params if method == "GET" else None,
-                    timeout=None
-                )
+                # 设置合理的超时时间
+                timeout = httpx.Timeout(connect=10, read=30)
+
+                # 根据方法选择参数传递方式
+                request_kwargs = {
+                    "method": method,
+                    "url": url,
+                    "timeout": timeout,
+                }
+                if method == "GET":
+                    request_kwargs["params"] = params
+                elif method in ["POST", "PUT", "PATCH", "DELETE"]:
+                    request_kwargs["json"] = params
+
+                # 发送请求
+                resp = await client.request(**request_kwargs)
                 # 根据 Content-Type 解析响应内容
                 content_type = resp.headers.get("content-type", "")
                 if "application/json" in content_type:
@@ -118,7 +129,8 @@ class ToolService:
 
         name = tool_config["name"]
         cls.tools[name] = tool_config
-        # TODO 持久化
+        with open(tool_json, "w", encoding="utf-8") as f:
+            json.dump(cls.tools, f, ensure_ascii=False, indent=4)
         return True
 
     @classmethod
@@ -147,15 +159,22 @@ class ToolService:
 
     @classmethod
     def find_tool(cls, type):
+        if type is None:
+            return cls.tools
         if type not in ['SQL', 'API']:
             return {'error': '不支持的工具类型'}
         return [tool for tool in cls.tools.values() if tool['type'] == type]
 
     @classmethod
     def delete_tool(cls, name):
-        # TODO 删除工具
-        pass
+        cls.tools.pop(name)
+        with open(tool_json, 'w', encoding='utf-8') as f:
+            json.dump(cls.tools, f, ensure_ascii=False, indent=4)
 
+
+if os.path.exists(tool_json):
+    with open(tool_json, 'r', encoding='utf-8',) as f:
+        ToolService.tools = json.load(f)
 
 if __name__ == '__main__':
     # 测试 GET 请求

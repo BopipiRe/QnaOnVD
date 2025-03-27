@@ -7,7 +7,6 @@ from flask import Blueprint, jsonify, request
 from zipp.compat.overlay import zipfile
 
 from service import VectorService, ChromaService
-from settings import resource_path
 
 chroma_bp = Blueprint('chroma', __name__, url_prefix='/chroma')
 
@@ -37,7 +36,7 @@ def get_collections():
               example: "服务器内部错误"
     """
     try:
-        return ChromaService.get_collections()
+        return ChromaService.get_collections(), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -88,7 +87,7 @@ def delete_collection():
         ChromaService.delete_collection(collection_name)  # 删除知识库
         if os.path.exists(os.path.join('resources', collection_name)):
             shutil.rmtree(os.path.join('resources', collection_name))  # 删除知识库对应的文件夹
-        return jsonify({'message': '知识库删除成功'})
+        return jsonify({'message': '知识库删除成功'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -136,7 +135,7 @@ def get_documents(collection_name):
         if collection_name not in ChromaService.get_collections():
             return jsonify({'error': '没有找到知识库' + collection_name}), 404
         documents_name = VectorService(collection_name=collection_name).get_documents()
-        return documents_name
+        return documents_name, 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -233,7 +232,7 @@ def add_documents(collection_name):
             shutil.move(filename, os.path.join("resources", collection_name, filename))
             message = f"{filename}: {res}"
 
-        return jsonify({'message': message})
+        return jsonify({'message': message}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -318,7 +317,7 @@ def update_document(collection_name):
             os.remove(os.path.join("resources", collection_name, filename, '.bak')) if os.path.exists(
                 os.path.join("resources", collection_name, filename, '.bak')) else None
 
-        return jsonify({'message': res})
+        return jsonify({'message': res}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -387,6 +386,6 @@ def delete_documents(collection_name):
         if collection_name not in ChromaService.get_collections():
             return jsonify({'error': '没有找到知识库' + collection_name}), 404
         message = VectorService(collection_name=collection_name).delete_documents(documents_source)
-        return jsonify({'message': message})
+        return jsonify({'message': message}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
