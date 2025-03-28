@@ -39,7 +39,7 @@ class ToolService:
         async with httpx.AsyncClient() as client:
             try:
                 # 设置合理的超时时间
-                timeout = httpx.Timeout(connect=10, read=30)
+                timeout = httpx.Timeout(connect=10, read=30, write=5.0, pool=2.0)
 
                 # 根据方法选择参数传递方式
                 request_kwargs = {

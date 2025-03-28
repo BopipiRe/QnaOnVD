@@ -2,11 +2,11 @@ import os.path
 import shutil
 import uuid
 
-from flasgger import swag_from, Swagger
 from flask import Blueprint, jsonify, request
 from zipp.compat.overlay import zipfile
 
 from service import VectorService, ChromaService
+from utils import validate_collection_name
 
 chroma_bp = Blueprint('chroma', __name__, url_prefix='/chroma')
 
@@ -42,6 +42,7 @@ def get_collections():
 
 
 @chroma_bp.route('/collections', methods=['DELETE'])
+@validate_collection_name
 def delete_collection():
     """
     删除指定知识库
@@ -81,8 +82,6 @@ def delete_collection():
               example: "删除操作失败"
     """
     collection_name = request.args.get('collection_name')
-    if not collection_name:
-        return jsonify({'error': '参数collection_name缺失'}), 400
     try:
         ChromaService.delete_collection(collection_name)  # 删除知识库
         if os.path.exists(os.path.join('resources', collection_name)):
@@ -93,6 +92,7 @@ def delete_collection():
 
 
 @chroma_bp.route('/collections/<collection_name>', methods=['GET'])
+@validate_collection_name
 def get_documents(collection_name):
     """
     获取知识库中的文档列表
@@ -132,8 +132,6 @@ def get_documents(collection_name):
               example: "获取文档列表失败"
     """
     try:
-        if collection_name not in ChromaService.get_collections():
-            return jsonify({'error': '没有找到知识库' + collection_name}), 404
         documents_name = VectorService(collection_name=collection_name).get_documents()
         return documents_name, 200
     except Exception as e:
@@ -239,6 +237,7 @@ def add_documents(collection_name):
 
 
 @chroma_bp.route('/collections/<collection_name>', methods=['PUT'])
+@validate_collection_name
 def update_document(collection_name):
     """
     更新知识库中的文档
@@ -324,6 +323,7 @@ def update_document(collection_name):
 
 
 @chroma_bp.route('/collections/<collection_name>', methods=['DELETE'])
+@validate_collection_name
 def delete_documents(collection_name):
     """
     删除知识库中的文档
@@ -383,9 +383,11 @@ def delete_documents(collection_name):
     if not documents_source:
         return jsonify({'error': '参数documents_source缺失'}), 400
     try:
-        if collection_name not in ChromaService.get_collections():
-            return jsonify({'error': '没有找到知识库' + collection_name}), 404
         message = VectorService(collection_name=collection_name).delete_documents(documents_source)
+        for source in documents_source:
+            file = os.path.join("resources", collection_name, source)
+            if os.path.exists(file):
+                os.remove(file)
         return jsonify({'message': message}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

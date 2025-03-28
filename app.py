@@ -1,11 +1,11 @@
 import asyncio
 
-from flasgger import Swagger, swag_from
+from flasgger import Swagger
 from flask import Flask
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
-from service import ChatService, VectorService, ToolService
+from service import ChatService, VectorService, ToolService, ChromaService
 from settings import chroma_db
 
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
@@ -30,6 +30,12 @@ def chat():
         required: true
         description: 查询内容（支持自然语言指令或工具调用指令）
         example: "查询工具"
+      - name: collection_name
+        in: query
+        type: string
+        required: False
+        description: 知识库名称
+        default: "default"
     responses:
       200:
         description: 成功响应（根据查询类型返回不同结构）
@@ -64,8 +70,11 @@ def chat():
     """
     # 从查询参数中获取 query
     query = request.args.get("query")
+    collection_name = request.args.get("collection_name") if request.args.get("collection_name") else "default"
     if not query:
         return {"error": "缺少查询参数 'query'"}, 400
+    if collection_name not in ChromaService.get_collections():
+        return {"error": "知识库不存在"}, 400
     try:
         if query == '查询工具':
             tools_name = [tool['name'] for tool in ToolService.tools.values()]
@@ -74,7 +83,7 @@ def chat():
         tool_res = asyncio.run(ToolService.tool_invoke(query))
         if tool_res:
             return tool_res
-        db = VectorService(persist_directory=chroma_db).db
+        db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
         doc_chain = ChatService().get_qa_chain(db)
         result = doc_chain.invoke({"query": query})
         return result['result']
