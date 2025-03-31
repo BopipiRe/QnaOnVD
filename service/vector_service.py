@@ -1,5 +1,7 @@
 import logging
 import os.path
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures.process import ProcessPoolExecutor
 
 import chromadb
 from deprecated import deprecated
@@ -54,6 +56,15 @@ class VectorService:
         documents = text_splitter.split_documents(document)
         return documents
 
+    def _process_single_file(self, file_path: str):
+        """单个文件的完整处理流水线"""
+        # 步骤1: 用进程池处理文件分块
+        chunks = self._file_chunks(file_path)
+
+        # 步骤2: 批量生成嵌入向量
+        with ThreadPoolExecutor() as executor:
+            executor.map(lambda chunk: self.db.add_documents([chunk]), chunks)
+
     def file_index(self, file):
         """
         将指定路径的文档（PDF 或 DOCX）嵌入并存储到向量数据库中。
@@ -62,7 +73,7 @@ class VectorService:
         try:
             if file in self.get_documents():
                 return "文件已存在"
-            self.db.add_documents(self._file_chunks(file))
+            self._process_single_file(file)
             return "文件索引成功"
         except Exception as e:
             return f"文件索引失败: {e}"

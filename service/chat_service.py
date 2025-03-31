@@ -79,11 +79,11 @@ class ChatService:
                 result = self.combine_documents_chain.invoke(inputs_for_combine)
 
                 # 返回结果
-                return {"result": result["output_text"]} # , "source_documents": docs}
+                return {"result": result["output_text"], "source_documents": docs} #
 
         # 返回自定义 RetrievalQA
         return CustomRetrievalQA(
             combine_documents_chain=combine_documents_chain,
             retriever=retriever,
-            # return_source_documents=True
+            return_source_documents=True
         )
