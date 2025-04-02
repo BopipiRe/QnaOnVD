@@ -1,7 +1,6 @@
 import logging
 import os.path
 from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures.process import ProcessPoolExecutor
 
 import chromadb
 from deprecated import deprecated
@@ -46,15 +45,18 @@ class VectorService:
             loader = TextLoader(file)
         else:
             raise ValueError(f"不支持的文件类型: {file}")
-        document = loader.load()
-        # Split the documents into smaller chunks
+        documents = loader.load()
+        # 合并所有页文本
+        full_text = "\n".join([d.page_content for d in documents])
+        merged_doc = Document(page_content=full_text, metadata={"source": file})
+        # 对合并后的文档分块
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separators=["\n## ", "\n\n", "\n", "。", "！"]
+            chunk_size=500,
+            chunk_overlap=100,
+            separators=["\n\n", "。", "！", "？", "\n"]
         )
-        documents = text_splitter.split_documents(document)
-        return documents
+        chunks = text_splitter.split_documents([merged_doc])
+        return chunks
 
     def _process_single_file(self, file_path: str):
         """单个文件的完整处理流水线"""

@@ -64,7 +64,7 @@ class ChatService:
 
                 # 如果没有检索到相关文档，直接返回预设提示
                 if not docs:
-                    return {"result": "根据提供资料无法回答"} # , "source_documents": docs}
+                    return {"result": "根据提供资料无法回答", "source_documents": []} #
 
                 # 调用父类的 _call 方法生成答案(多一次数据库查询操作)
                 # return super()._call(inputs)
@@ -77,9 +77,12 @@ class ChatService:
 
                 # 调用 combine_documents_chain 生成答案
                 result = self.combine_documents_chain.invoke(inputs_for_combine)
-
+                source_documents = []
+                for doc in docs:
+                    source_document = doc.dict()
+                    source_documents.append(source_document)
                 # 返回结果
-                return {"result": result["output_text"], "source_documents": docs} #
+                return {"result": result["output_text"], "source_documents": source_documents} #
 
         # 返回自定义 RetrievalQA
         return CustomRetrievalQA(

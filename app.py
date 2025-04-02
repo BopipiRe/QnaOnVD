@@ -1,7 +1,7 @@
 import asyncio
 
 from flasgger import Swagger
-from flask import Flask
+from flask import Flask, jsonify
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
@@ -86,7 +86,7 @@ def chat():
         db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
         doc_chain = ChatService().get_qa_chain(db)
         result = doc_chain.invoke({"query": query})
-        return result['result']
+        return jsonify(result)
     except Exception as e:
         return {"error": str(e)}, 500
 

@@ -5,7 +5,7 @@ from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.llms.ollama import Ollama
 
 # 配置日志级别和输出格式
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s -  %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s -  %(levelname)s - %(message)s')
 
 # 设置并发参数（Ollama 0.2+ 特性）
 # os.environ["OLLAMA_MAX_LOADED_MODELS"] = "2"  # 最大同时加载模型数
@@ -16,7 +16,9 @@ os.environ["LANGCHAIN_TRACING_V2"] = "true"
 os.environ["LANGCHAIN_API_KEY"] = "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"
 os.environ["LANGCHAIN_PROJECT"] = "工具"
 
-chunk_size=1000
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
+chunk_size=500
 chunk_overlap=100
 llm_name="qwen2.5:1.5b"
 langchain_llm=Ollama(model=llm_name)
