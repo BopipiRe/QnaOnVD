@@ -1,8 +1,8 @@
 import logging
 import os
 
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_community.llms.ollama import Ollama
+from langchain_ollama import OllamaEmbeddings
+from langchain_ollama import OllamaLLM
 
 # 配置日志级别和输出格式
 logging.basicConfig(level=logging.ERROR, format='%(asctime)s -  %(levelname)s - %(message)s')
@@ -21,7 +21,7 @@ os.environ["ANONYMIZED_TELEMETRY"] = "False"
 chunk_size=500
 chunk_overlap=100
 llm_name="qwen2.5:1.5b"
-langchain_llm=Ollama(model=llm_name)
+langchain_llm=OllamaLLM(model=llm_name)
 embed_model = OllamaEmbeddings(model="bge-m3", base_url="http://localhost:11434")
 
 # 向量数据库名称

@@ -51,8 +51,8 @@ class VectorService:
         merged_doc = Document(page_content=full_text, metadata={"source": file})
         # 对合并后的文档分块
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=100,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
             separators=["\n\n", "。", "！", "？", "\n"]
         )
         chunks = text_splitter.split_documents([merged_doc])

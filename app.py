@@ -84,8 +84,8 @@ def chat():
         if tool_res:
             return tool_res
         db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
-        doc_chain = ChatService().get_qa_chain(db)
-        result = doc_chain.invoke({"query": query})
+        chat_service = ChatService(vector_store=db)
+        result = chat_service.invoke(query)
         return jsonify(result)
     except Exception as e:
         return {"error": str(e)}, 500

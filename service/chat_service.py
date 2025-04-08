@@ -1,15 +1,17 @@
+from deprecated import deprecated
 from langchain.chains import RetrievalQA, LLMChain
-from langchain.chains.combine_documents.stuff import StuffDocumentsChain
+from langchain.chains.combine_documents.stuff import StuffDocumentsChain, create_stuff_documents_chain
 from langchain.prompts import PromptTemplate
 
 from settings import langchain_llm
 
 
 class ChatService:
-    def __init__(self, llm=langchain_llm):
+    def __init__(self, llm=langchain_llm, vector_store=None):
         self.llm = llm
         # self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
         self.prompt_template = self._get_prompt_template()
+        self.vector_store = vector_store
 
     def _get_prompt_template(self):
         """
@@ -34,6 +36,7 @@ class ChatService:
         {question}"""
         return PromptTemplate(template=prompt_template, input_variables=["context", "question"])
 
+    @deprecated(version='1.0', reason="This function will be removed soon")
     def get_qa_chain(self, vector_store):
         """
         获取问答链。
@@ -90,3 +93,22 @@ class ChatService:
             retriever=retriever,
             return_source_documents=True
         )
+
+    def invoke(self, query):
+        # 配置检索器
+        retriever = self.vector_store.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"score_threshold": 0.65}  # 设置得分阈值
+        )
+
+        # 创建 StuffDocumentsChain
+        combine_documents_chain = create_stuff_documents_chain(llm=self.llm, prompt=self.prompt_template)
+
+        docs = retriever.invoke(query)
+        # 如果没有检索到相关文档，直接返回预设提示
+        if not docs:
+            return {"result": "根据提供资料无法回答", "source_documents": []}
+        result = combine_documents_chain.invoke({"context": docs, "question": query})
+        source_documents = [{"page_content": doc.page_content, "source": doc.metadata["source"]} for doc in docs]
+        # 返回结果
+        return {"result": result, "source_documents": source_documents}
