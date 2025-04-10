@@ -2,8 +2,13 @@ from deprecated import deprecated
 from langchain.chains import RetrievalQA, LLMChain
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain, create_stuff_documents_chain
 from langchain.prompts import PromptTemplate
+from langchain_mcp_adapters.tools import load_mcp_tools
+from langchain_ollama import ChatOllama
+from langgraph.prebuilt import create_react_agent
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
-from settings import langchain_llm
+from settings import langchain_llm, score_threshold
 
 
 class ChatService:
@@ -67,7 +72,7 @@ class ChatService:
 
                 # 如果没有检索到相关文档，直接返回预设提示
                 if not docs:
-                    return {"result": "根据提供资料无法回答", "source_documents": []} #
+                    return {"result": "根据提供资料无法回答", "source_documents": []}  #
 
                 # 调用父类的 _call 方法生成答案(多一次数据库查询操作)
                 # return super()._call(inputs)
@@ -85,7 +90,7 @@ class ChatService:
                     source_document = doc.dict()
                     source_documents.append(source_document)
                 # 返回结果
-                return {"result": result["output_text"], "source_documents": source_documents} #
+                return {"result": result["output_text"], "source_documents": source_documents}  #
 
         # 返回自定义 RetrievalQA
         return CustomRetrievalQA(
@@ -94,11 +99,11 @@ class ChatService:
             return_source_documents=True
         )
 
-    def invoke(self, query):
+    def _invoke(self, query):
         # 配置检索器
         retriever = self.vector_store.as_retriever(
             search_type="similarity_score_threshold",
-            search_kwargs={"score_threshold": 0.65}  # 设置得分阈值
+            search_kwargs={"score_threshold": score_threshold}  # 设置得分阈值
         )
 
         # 创建 StuffDocumentsChain
@@ -112,3 +117,39 @@ class ChatService:
         source_documents = [{"page_content": doc.page_content, "source": doc.metadata["source"]} for doc in docs]
         # 返回结果
         return {"result": result, "source_documents": source_documents}
+
+    async def invoke(self, query):
+        # 创建服务器参数
+        server_params = StdioServerParameters(
+            command="python",
+            # 确保更新为 math_server.py 文件路径
+            args=["service/mcp_service.py"],
+        )
+
+        # 使用 stdio_client 进行连接
+        async with stdio_client(server_params) as (read, write):
+            async with ClientSession(read, write) as session:
+                # 初始化连接
+                await session.initialize()
+
+                # 加载工具
+                mcp_tools = await load_mcp_tools(session)
+                print("加载工具完成: ", [tool.name for tool in mcp_tools])
+
+                # 创建代理
+                agent = create_react_agent(ChatOllama(model="qwen2.5:1.5b", temperature=0.7), mcp_tools)
+
+                # 调用代理处理问题
+                agent_response = await agent.ainvoke({"messages": [{"role": "user", "content": query},
+                                                                   {"role": "system", "content": "使用中文进行回答"}]})
+
+                # 打印完整响应（调试用）
+                # print("\n完整响应:", agent_response)
+                for message in agent_response["messages"]:
+                    if message.type == "tool":
+                        print(f"工具调用: {message.name}\n结果：{message.content}")
+
+                if any(message.type == "tool" for message in agent_response["messages"]):
+                    return {"result": agent_response["messages"][-1].content, "source_documents": "工具调用"}
+                else:
+                    return self._invoke(query)

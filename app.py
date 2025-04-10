@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
-from service import ChatService, VectorService, ToolService, ChromaService
+from service import ChatService, VectorService, ChromaService, ToolDB
 from settings import chroma_db
 
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
@@ -77,15 +77,11 @@ def chat():
         return {"error": "知识库不存在"}, 400
     try:
         if query == '查询工具':
-            tools_name = [tool['name'] for tool in ToolService.tools.values()]
+            tools_name = [config["name"] for config in ToolDB().load_all_tools()]
             return tools_name if tools_name else '暂无工具'
-        # 判断是否调用工具，若需要调用则解析query并返回调用结果（格式化后）
-        tool_res = asyncio.run(ToolService.tool_invoke(query))
-        if tool_res:
-            return tool_res
         db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
         chat_service = ChatService(vector_store=db)
-        result = chat_service.invoke(query)
+        result = asyncio.run(chat_service.invoke(query))
         return jsonify(result)
     except Exception as e:
         return {"error": str(e)}, 500
@@ -120,7 +116,7 @@ def test():
     kwarg = request.args
     input1 = kwarg.get('input1')
     input2 = kwarg.get('input2')
-    return {"output1": input1, "output2": input2}
+    return {"output1": int(input1)*100, "output2": input2}
 
 app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)

@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.ERROR, format='%(asctime)s -  %(levelname)s - 
 
 # 设置并发参数（Ollama 0.2+ 特性）
 # os.environ["OLLAMA_MAX_LOADED_MODELS"] = "2"  # 最大同时加载模型数
-os.environ["OLLAMA_NUM_PARALLEL"] = str(min(32, (os.cpu_count() or 1) + 4))      # 每个模型的并行请求数
+os.environ["OLLAMA_NUM_PARALLEL"] = str(min(32, (os.cpu_count() or 1) + 4))  # 每个模型的并行请求数
 
 # 配置 LangSmith
 os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -18,21 +18,21 @@ os.environ["LANGCHAIN_PROJECT"] = "工具"
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
-chunk_size=500
-chunk_overlap=100
-llm_name="qwen2.5:1.5b"
-langchain_llm=OllamaLLM(model=llm_name)
+chunk_size = 500
+chunk_overlap = 100
+score_threshold = 0.6
+langchain_llm = OllamaLLM(model="qwen2.5:1.5b")
 embed_model = OllamaEmbeddings(model="bge-m3", base_url="http://localhost:11434")
 
 # 向量数据库名称
-default_db='default'
+default_db = 'default'
 # 向量数据库持久化地址
-chroma_db='resources/chroma_db'
+chroma_db = 'resources/chroma_db'
 # 工具持久化
-tool_json='resources/tool.json'
+tool_json = 'resources/tool.json'
 
 # 工具json格式配置
-schema = {
+_schema = {
     "type": "object",
     "properties": {
         "name": {"type": "string",
@@ -49,9 +49,9 @@ schema = {
                     "type": "object",
                     "properties": {
                         "type": {"type": "string", "enum": ["string", "number", "boolean", "object", "array"]},
-                        # "required": {"type": "boolean"}
+                        "required": {"type": "boolean"}
                     },
-                    "required": ["type"] #, "required"
+                    "required": ["type"]  # , "required"
                 }
             },
             # 至少需要一个属性
@@ -62,4 +62,31 @@ schema = {
         "response_format": {"type": "string"}
     },
     "required": ["name", "type", "url", "method", "description"]
+}
+
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "pattern": "^[^:]+$"},
+        "type": {"type": "string", "enum": ["SQL", "API"]},
+        "url": {"type": "string", "format": "uri"},
+        "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]},
+        "description": {"type": "string"},
+        "input_schema": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z0-9_]+$": {
+                    "type": "object",
+                    "properties": {
+                        "type": {"type": "string", "enum": ["string", "int", "bool", "list", "dict", "any"]},
+                        "required": {"type": "boolean"}
+                    },
+                    "required": ["type", "required"]  # 要求这两个字段
+                }
+            },
+            "minProperties": 1,
+            "additionalProperties": False
+        }
+    },
+    "required": ["name", "type", "url", "method", "description", "input_schema"]
 }
