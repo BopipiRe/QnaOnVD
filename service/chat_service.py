@@ -106,19 +106,22 @@ class ChatService:
             search_kwargs={"score_threshold": score_threshold}  # 设置得分阈值
         )
 
-        # 创建 StuffDocumentsChain
-        combine_documents_chain = create_stuff_documents_chain(llm=self.llm, prompt=self.prompt_template)
-
         docs = retriever.invoke(query)
         # 如果没有检索到相关文档，直接返回预设提示
         if not docs:
             return {"result": "根据提供资料无法回答", "source_documents": []}
+
+        # 创建 StuffDocumentsChain
+        combine_documents_chain = create_stuff_documents_chain(llm=self.llm, prompt=self.prompt_template)
         result = combine_documents_chain.invoke({"context": docs, "question": query})
         source_documents = [{"page_content": doc.page_content, "source": doc.metadata["source"]} for doc in docs]
         # 返回结果
         return {"result": result, "source_documents": source_documents}
 
     async def invoke(self, query):
+        res = self._invoke(query)
+        if res["source_documents"]:
+           return res
         # 创建服务器参数
         server_params = StdioServerParameters(
             command="python",
@@ -138,11 +141,9 @@ class ChatService:
                 # 创建代理
                 agent = create_react_agent(ChatOllama(model="qwen2.5:1.5b", temperature=0.7), mcp_tools)
 
-                # 调用代理处理问题
-                agent_response = await agent.ainvoke({"messages": [{"role": "user", "content": query},
-                                                                   {"role": "system", "content": "使用中文进行回答"}]})
+                agent_response = await agent.ainvoke({"messages": query})
 
                 if any(message.type == "tool" for message in agent_response["messages"]):
                     return {"result": agent_response["messages"][-1].content, "source_documents": "工具调用"}
                 else:
-                    return self._invoke(query)
+                    return {"result": "根据提供资料无法回答", "source_documents": []}
