@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Any
 
 from langchain_ollama import OllamaEmbeddings
 from langchain_ollama import OllamaLLM
@@ -67,7 +68,10 @@ _schema = {
 schema = {
     "type": "object",
     "properties": {
-        "name": {"type": "string", "pattern": "^[^:]+$"},
+        "name": {
+            "type": "string",
+            "pattern": "^([\u4e00-\u9fa5a-zA-Z])([\u4e00-\u9fa5a-zA-Z0-9_-]{,8})$"
+        },
         "type": {"type": "string", "enum": ["SQL", "API"]},
         "url": {"type": "string", "format": "uri"},
         "method": {"type": "string", "enum": ["GET", "POST", "PUT", "DELETE"]},
@@ -75,10 +79,10 @@ schema = {
         "input_schema": {
             "type": "object",
             "patternProperties": {
-                "^[a-zA-Z0-9_]+$": {
+                "^([a-zA-Z])([a-zA-Z0-9_]{,8})$": {
                     "type": "object",
                     "properties": {
-                        "type": {"type": "string", "enum": ["string", "int", "bool", "list", "dict", "any"]},
+                        "type": {"type": "string", "enum": ["string", "int", "float", "bool", "list", "dict", "any"]},
                         "required": {"type": "boolean"}
                     },
                     "required": ["type", "required"]  # 要求这两个字段
@@ -89,4 +93,14 @@ schema = {
         }
     },
     "required": ["name", "type", "url", "method", "description", "input_schema"]
+}
+
+TYPE_MAPPING = {
+    "string": str,
+    "int": int,
+    "float": float,
+    "bool": bool,
+    "list": list,
+    "dict": dict,
+    "any": Any  # 任意类型
 }

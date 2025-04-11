@@ -42,6 +42,11 @@ class ToolDB:
         cursor = self.conn.execute("SELECT config FROM http_tools WHERE type = ?", (tool_type,))
         return [json.loads(row[0]) for row in cursor]
 
+    def load_tool(self, tool_name):
+        cursor = self.conn.execute("SELECT config FROM http_tools WHERE name = ?", (tool_name,))
+        row = cursor.fetchone()
+        return json.loads(row[0]) if row else None
+
 
 if __name__ == "__main__":
     db = ToolDB(db_path="../resources/tools.db")

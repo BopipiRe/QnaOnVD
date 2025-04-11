@@ -1,7 +1,5 @@
-import asyncio
-
 from flasgger import Swagger
-from flask import Flask, jsonify
+from flask import Flask
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
@@ -12,12 +10,13 @@ from settings import chroma_db
 app = Flask(__name__)
 Swagger(app)
 
-#程序实例需要知道每个url请求所对应的运行代码是谁。
-#所以程序中必须要创建一个url请求地址到python运行函数的一个映射。
-#处理url和视图函数之间的关系的程序就是"路由"，在Flask中，路由是通过@app.route装饰器(以@开头)来表示的
-#url映射的函数，要传参则在上述route（路由）中添加参数申明
+
+# 程序实例需要知道每个url请求所对应的运行代码是谁。
+# 所以程序中必须要创建一个url请求地址到python运行函数的一个映射。
+# 处理url和视图函数之间的关系的程序就是"路由"，在Flask中，路由是通过@app.route装饰器(以@开头)来表示的
+# url映射的函数，要传参则在上述route（路由）中添加参数申明
 @app.route("/chat")
-def chat():
+async def chat():
     """
     综合查询接口 - 支持工具调用与向量检索
     ---
@@ -76,15 +75,31 @@ def chat():
     if collection_name not in ChromaService.get_collections():
         return {"error": "知识库不存在"}, 400
     try:
-        if query == '查询工具':
-            tools_name = [config["name"] for config in ToolDB().load_all_tools()]
-            return tools_name if tools_name else '暂无工具'
+        if query in ["工具", "工具列表", "工具列表查询", "查询工具列表", "查询可用工具"]:
+            return ("\n - ".join(["以下是可用工具："] + [tool['name'] for tool in ToolDB().load_all_tools()]) +
+                    "\n使用“工具+工具名称查询工具配置”，例如工具test", 200)
+        elif query.startswith("工具"):
+            tool_name = query[2:]
+            tool = ToolDB().load_tool(tool_name)
+            if tool:
+                output_lines = [f"工具{tool['name']}配置如下：", f"- 描述：{tool['description']}",
+                                f"- 方法：{tool['method']}", f"- 类型：{tool['type']}", f"- URL：{tool['url']}",
+                                "- 输入 schema："]
+
+                for param, config in tool.get("input_schema", {}).items():
+                    required = "必需" if config.get("required", False) else "非必需"
+                    output_lines.append(f"- {param} (类型：{config['type']}，{required})")
+
+                return "\n".join(output_lines), 200
+            else:
+                return {"error": "工具不存在"}, 400
         db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
         chat_service = ChatService(vector_store=db)
-        result = asyncio.run(chat_service.invoke(query))
-        return jsonify(result)
+        result = await chat_service.invoke(query)  # 直接await
+        return result["result"]
     except Exception as e:
         return {"error": str(e)}, 500
+
 
 @app.route("/test")
 def test():
@@ -116,11 +131,11 @@ def test():
     kwarg = request.args
     input1 = kwarg.get('input1')
     input2 = kwarg.get('input2')
-    return {"output1": int(input1)*100, "output2": input2}
+    return {"output1": int(input1) * 100, "output2": input2}
+
 
 app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)
 
 if __name__ == '__main__':
-    app.run(debug=True) # 多进程 生产：gunicorn -w 4 myapp:app 开发：app.run(processes=N)
-
+    app.run(debug=True)  # 多进程 生产：gunicorn -w 4 myapp:app 开发：app.run(processes=N)

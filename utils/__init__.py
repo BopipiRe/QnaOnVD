@@ -1,0 +1,1 @@
+from .valid_data import validate_collection_name

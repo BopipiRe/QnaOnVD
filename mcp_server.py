@@ -4,19 +4,10 @@ from typing import Any, Callable
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-from tool_db import ToolDB
+from service import ToolDB
+from settings import TYPE_MAPPING
 
 mcp = FastMCP("mcp")
-
-TYPE_MAPPING = {
-    "string": str,
-    "int": int,
-    "float": float,
-    "bool": bool,
-    "list": list,
-    "dict": dict,
-    "any": Any  # 任意类型
-}
 
 
 def parse_type(type_str: str):

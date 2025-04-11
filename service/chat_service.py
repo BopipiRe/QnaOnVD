@@ -123,7 +123,7 @@ class ChatService:
         server_params = StdioServerParameters(
             command="python",
             # 确保更新为 math_server.py 文件路径
-            args=["service/mcp_service.py"],
+            args=["mcp_server.py"],
         )
 
         # 使用 stdio_client 进行连接
@@ -134,7 +134,6 @@ class ChatService:
 
                 # 加载工具
                 mcp_tools = await load_mcp_tools(session)
-                print("加载工具完成: ", [tool.name for tool in mcp_tools])
 
                 # 创建代理
                 agent = create_react_agent(ChatOllama(model="qwen2.5:1.5b", temperature=0.7), mcp_tools)
@@ -142,12 +141,6 @@ class ChatService:
                 # 调用代理处理问题
                 agent_response = await agent.ainvoke({"messages": [{"role": "user", "content": query},
                                                                    {"role": "system", "content": "使用中文进行回答"}]})
-
-                # 打印完整响应（调试用）
-                # print("\n完整响应:", agent_response)
-                for message in agent_response["messages"]:
-                    if message.type == "tool":
-                        print(f"工具调用: {message.name}\n结果：{message.content}")
 
                 if any(message.type == "tool" for message in agent_response["messages"]):
                     return {"result": agent_response["messages"][-1].content, "source_documents": "工具调用"}
