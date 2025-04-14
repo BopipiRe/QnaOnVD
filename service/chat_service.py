@@ -1,7 +1,10 @@
+import asyncio
+
 from deprecated import deprecated
 from langchain.chains import RetrievalQA, LLMChain
 from langchain.chains.combine_documents.stuff import StuffDocumentsChain, create_stuff_documents_chain
 from langchain.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough, RunnableBranch, RunnableLambda
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langchain_ollama import ChatOllama
 from langgraph.prebuilt import create_react_agent
@@ -119,31 +122,32 @@ class ChatService:
         return {"result": result, "source_documents": source_documents}
 
     async def invoke(self, query):
-        res = self._invoke(query)
-        if res["source_documents"]:
-           return res
-        # 创建服务器参数
-        server_params = StdioServerParameters(
-            command="python",
-            # 确保更新为 math_server.py 文件路径
-            args=["mcp_server.py"],
+        async def call_agent(query: str):
+            server_params = StdioServerParameters(
+                command="python",
+                # 确保更新为 math_server.py 文件路径
+                args=["mcp_server.py"],
+            )
+            # 使用 stdio_client 进行连接
+            async with stdio_client(server_params) as (read, write):
+                async with ClientSession(read, write) as session:
+                    # 初始化连接
+                    await session.initialize()
+                    mcp_tools = await load_mcp_tools(session)
+                    agent = create_react_agent(ChatOllama(model="qwen2.5:1.5b", temperature=0.7), mcp_tools)
+                    agent_response = await agent.ainvoke({"messages": query})
+                    if any(message.type == "tool" for message in agent_response["messages"]):
+                        return {"result": agent_response["messages"][-1].content, "source_documents": "工具调用"}
+                    else:
+                        return {"result": "根据提供资料无法回答", "source_documents": []}
+
+        chain = (
+                RunnablePassthrough.assign(retriever_result=lambda x: self._invoke(x["query"])) |
+                RunnableBranch(
+                    (lambda x: not x["retriever_result"]["source_documents"],
+                     RunnableLambda(lambda x: asyncio.run(call_agent(x["query"])))),
+                    lambda x: x["retriever_result"]
+                )
         )
 
-        # 使用 stdio_client 进行连接
-        async with stdio_client(server_params) as (read, write):
-            async with ClientSession(read, write) as session:
-                # 初始化连接
-                await session.initialize()
-
-                # 加载工具
-                mcp_tools = await load_mcp_tools(session)
-
-                # 创建代理
-                agent = create_react_agent(ChatOllama(model="qwen2.5:1.5b", temperature=0.7), mcp_tools)
-
-                agent_response = await agent.ainvoke({"messages": query})
-
-                if any(message.type == "tool" for message in agent_response["messages"]):
-                    return {"result": agent_response["messages"][-1].content, "source_documents": "工具调用"}
-                else:
-                    return {"result": "根据提供资料无法回答", "source_documents": []}
+        return await chain.ainvoke({"query": query})
