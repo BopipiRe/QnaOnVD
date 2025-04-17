@@ -1,5 +1,5 @@
 from flasgger import Swagger
-from flask import Flask
+from flask import Flask, Response
 from flask import request
 
 from blueprint import tool_bp, chroma_bp
@@ -74,32 +74,37 @@ async def chat():
         return {"error": "缺少查询参数 'query'"}, 400
     if collection_name not in ChromaService.get_collections():
         return {"error": "知识库不存在"}, 400
-    try:
-        if query in ["工具", "工具列表", "工具列表查询", "查询工具列表", "查询可用工具"]:
-            return ("\n - ".join(["以下是可用工具："] + [tool['name'] for tool in ToolDB().load_all_tools()]) +
-                    "\n使用“工具+工具名称查询工具配置”，例如工具test", 200)
-        elif query.startswith("工具"):
-            tool_name = query[2:]
-            tool = ToolDB().load_tool(tool_name)
-            if tool:
-                output_lines = [f"工具{tool['name']}配置如下：", f"- 描述：{tool['description']}",
-                                f"- 方法：{tool['method']}", f"- 类型：{tool['type']}", f"- URL：{tool['url']}",
-                                "- 输入 schema："]
 
-                for param, config in tool.get("input_schema", {}).items():
-                    required = "必需" if config.get("required", False) else "非必需"
-                    output_lines.append(f"- {param} (类型：{config['type']}，{required})")
+    if query in ["工具", "工具列表", "工具列表查询", "查询工具列表", "查询可用工具"]:
+        return ("\n - ".join(["以下是可用工具："] + [tool['name'] for tool in ToolDB().load_all_tools()]) +
+                "\n使用“工具+工具名称查询工具配置”，例如工具test", 200)
+    elif query.startswith("工具"):
+        tool_name = query[2:]
+        tool = ToolDB().load_tool(tool_name)
+        if tool:
+            output_lines = [f"工具{tool['name']}配置如下：", f"- 描述：{tool['description']}",
+                            f"- 方法：{tool['method']}", f"- 类型：{tool['type']}", f"- URL：{tool['url']}",
+                            "- 输入 schema："]
 
-                return "\n".join(output_lines), 200
-            else:
-                return {"error": "工具不存在"}, 400
-        db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
-        chat_service = ChatService(vector_store=db)
-        result = await chat_service.invoke(query)  # 直接await
-        return result["result"]
-    except Exception as e:
-        return {"error": str(e)}, 500
+            for param, config in tool.get("input_schema", {}).items():
+                required = "必需" if config.get("required", False) else "非必需"
+                output_lines.append(f"- {param} (类型：{config['type']}，{required})")
 
+            return "\n".join(output_lines), 200
+        else:
+            return {"error": "工具不存在"}, 400
+
+    def generate():
+        try:
+            db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
+            chat_service = ChatService(vector_store=db)
+
+            for chunk in chat_service.chain.stream({"query": query}):
+                yield chunk
+        except Exception as e:
+            yield {"error": str(e)}
+
+    return Response(generate(), mimetype="text/event-stream")
 
 @app.route("/test")
 def test():
