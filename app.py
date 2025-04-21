@@ -1,6 +1,8 @@
+import uuid
+
+from authlib.integrations.flask_client import OAuth
 from flasgger import Swagger
-from flask import Flask, Response
-from flask import request
+from flask import Flask, Response, redirect, url_for, session, request
 
 from blueprint import tool_bp, chroma_bp
 from service import ChatService, VectorService, ChromaService, ToolDB
@@ -9,6 +11,44 @@ from settings import chroma_db
 # 用当前脚本名称实例化Flask对象，方便flask从该脚本文件中获取需要的内容
 app = Flask(__name__)
 Swagger(app)
+app.secret_key = uuid.uuid4().hex
+oauth = OAuth(app)
+
+github = oauth.register(
+    name='github',
+    client_id='Ov23liUFRgNC6CJpnQEV',
+    client_secret='dd4c1707ef834681c3a55b776ed5b101ecc46a95',
+    authorize_url='https://github.com/login/oauth/authorize',
+    access_token_url='https://github.com/login/oauth/access_token',
+    api_base_url='https://api.github.com/',
+    client_kwargs={'scope': 'user:email'}
+)
+
+
+# 全局登录检查（拦截所有请求）
+@app.before_request
+def check_login():
+    # 排除登录页和静态文件（避免死循环）
+    if (request.endpoint in ['login', 'authorized'] or
+            any(request.path.startswith(path) for path in ['/apidocs', '/flasgger_static', '/apispec_1.json'])):
+        return None
+    if 'user' not in session:  # 检查是否登录
+        return redirect(url_for('login', next=request.url))
+    return None
+
+
+@app.route('/login')
+def login():
+    return github.authorize_redirect(url_for('authorized', _external=True))
+
+
+@app.route('/callback')
+def authorized():
+    token = github.authorize_access_token()
+    resp = github.get('user').json()
+    session['user'] = resp  # 存储用户信息
+    session['access_token'] = token['access_token']
+    return {"token": token, "user": session['user']}
 
 
 # 程序实例需要知道每个url请求所对应的运行代码是谁。
@@ -93,18 +133,19 @@ async def chat():
             return "\n".join(output_lines), 200
         else:
             return {"error": "工具不存在"}, 400
+    session_cookie = request.cookies.get('session')
 
-    def generate():
+    def generate(chat_service):
         try:
-            db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
-            chat_service = ChatService(vector_store=db)
-
             for chunk in chat_service.chain.stream({"query": query}):
                 yield chunk
         except Exception as e:
             yield {"error": str(e)}
 
-    return Response(generate(), mimetype="text/event-stream")
+    db = VectorService(persist_directory=chroma_db, collection_name=collection_name).db
+    chat_service = ChatService(vector_store=db, session=session_cookie)
+    return Response(generate(chat_service), mimetype="text/event-stream")
+
 
 @app.route("/test")
 def test():

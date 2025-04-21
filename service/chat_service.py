@@ -15,11 +15,12 @@ from settings import langchain_llm, score_threshold
 
 
 class ChatService:
-    def __init__(self, llm=langchain_llm, vector_store=None):
+    def __init__(self, llm=langchain_llm, vector_store=None, session=None):
         self.llm = llm
         # self.memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
         self.prompt_template = self._get_prompt_template()
         self.vector_store = vector_store
+        self.session = session
 
     def _get_prompt_template(self):
         """
@@ -126,6 +127,7 @@ class ChatService:
                     command="python",
                     # 确保更新为 math_server.py 文件路径
                     args=["mcp_server.py"],
+                    env={"SESSION": self.session}
                 )
                 # 使用 stdio_client 进行连接
                 async with stdio_client(server_params) as (read, write):
