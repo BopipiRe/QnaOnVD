@@ -3,6 +3,7 @@ import uuid
 from authlib.integrations.flask_client import OAuth
 from flasgger import Swagger
 from flask import Flask, Response, redirect, url_for, session, request
+from requests_oauthlib import OAuth2Session
 
 from blueprint import tool_bp, chroma_bp
 from service import ChatService, VectorService, ChromaService, ToolDB
@@ -39,6 +40,8 @@ def check_login():
 
 @app.route('/login')
 def login():
+    next_url = request.args.get('next')
+    session['oauth_next'] = next_url
     return github.authorize_redirect(url_for('authorized', _external=True))
 
 
@@ -47,8 +50,8 @@ def authorized():
     token = github.authorize_access_token()
     resp = github.get('user').json()
     session['user'] = resp  # 存储用户信息
-    session['access_token'] = token['access_token']
-    return {"token": token, "user": session['user']}
+    session['token'] = token
+    return redirect(session.pop('oauth_next'))
 
 
 # 程序实例需要知道每个url请求所对应的运行代码是谁。
@@ -179,6 +182,26 @@ def test():
     input2 = kwarg.get('input2')
     return {"output1": int(input1) * 100, "output2": input2}
 
+
+@app.route("/test2")
+def test2():
+    if 'token' not in session:
+        return redirect(url_for('login'))  # 未登录则重定向到登录页
+
+    # 获取token并验证其有效性
+    token = session.get("token")
+    if not token:
+        return {"error": "无效的访问令牌"}, 401
+
+    # 使用OAuth2Session调用目标API
+    oauth_test = OAuth2Session(client_id='Ov23liUFRgNC6CJpnQEV', token=token)
+    try:
+        # 动态生成目标URL，避免硬编码
+        resp = oauth_test.get('https://api.github.com/user')
+        resp.raise_for_status()  # 检查HTTP响应状态码
+        return resp.json()
+    except Exception as e:
+        return {"error": f"调用API失败: {str(e)}"}, 500
 
 app.register_blueprint(chroma_bp)
 app.register_blueprint(tool_bp)
